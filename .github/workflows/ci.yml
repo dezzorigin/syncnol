@@ -229,9 +229,13 @@ jobs:
             test -s "$f" || (echo "hilang/kosong: $f" && exit 1)
           done
           grep -q "<svg" docs/DIAGRAMS.html || (echo "DIAGRAMS.html tanpa SVG" && exit 1)
-          # Diagram gaya diagram-design: HTML+SVG, BUKAN Mermaid.
-          grep -qi "mermaid" docs/DIAGRAMS.html \
-            && (echo "DIAGRAMS.html masih mengandung Mermaid" && exit 1)
+          # Diagram gaya diagram-design: HTML+SVG, BUKAN Mermaid. Yang
+          # dilarang adalah artefak Mermaid sungguhan (skrip / blok
+          # mermaid) — kata "Mermaid" dalam prosa ("bukan Mermaid")
+          # bukan pelanggaran.
+          if grep -qiE "mermaid\.min\.js|class=\"mermaid\"|^\`\`\`mermaid" docs/DIAGRAMS.html; then
+            echo "DIAGRAMS.html masih mengandung Mermaid" && exit 1
+          fi
           grep -q "docs/screenshots/01-landing-hero.png" README.md \
             || (echo "README tanpa screenshot landing" && exit 1)
           grep -q "Video demo" README.md \
