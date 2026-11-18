@@ -7,6 +7,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # 2. Nyalain Mesin (GenAI SDK Terbaru)
+import sys
+if not os.getenv("GEMINI_API_KEY"):
+    raise SystemExit("GEMINI_API_KEY belum diset — isi .env dulu (lihat .env.example).")
+
 client = genai.Client()
 
 # 🎭 3. SYSTEM PROMPT (Otak Nudging SyncNol)

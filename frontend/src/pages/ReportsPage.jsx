@@ -239,63 +239,52 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        {/* PREVIEW */}
+        {/* PREVIEW — ringkasan langsung dari data (bukan mock mati) */}
         <div className="lg:col-span-7 flex items-center justify-center">
-          <div className="w-full max-w-md aspect-[1/1.4] bg-white dark:bg-gray-100 rounded border border-slate-200 shadow-2xl overflow-hidden relative group">
-            {/* Safe PDF Placeholder requested by the user */}
-            <div className="absolute inset-0 flex items-center justify-center text-slate-500 font-bold bg-white dark:bg-gray-100 z-10">
-              Modul PDF sedang disiapkan...
-            </div>
-            
-            {/* Mock PDF Header */}
-            <div className="absolute top-0 w-full h-1/4 bg-slate-900 flex flex-col justify-end p-8 text-white hidden">
+          <div className="w-full max-w-md bg-white dark:bg-gray-100 rounded border border-slate-200 shadow-2xl overflow-hidden relative">
+            <div className="w-full bg-slate-900 flex flex-col justify-end p-8 text-white">
               <div className="text-2xl font-serif">SyncNol Financial</div>
               <div className="text-xs text-slate-400 mt-1 uppercase tracking-widest">
                 Laporan {config.month}
               </div>
             </div>
-
-            {/* Mock Body */}
-            <div className="absolute top-1/4 w-full h-3/4 p-8 flex flex-col gap-6 hidden">
-              <div className="flex gap-4">
-                <div className="w-1/2 h-20 bg-slate-100 rounded-sm" />
-                <div className="w-1/2 h-20 bg-slate-100 rounded-sm" />
-              </div>
-
-              {config.includeCharts && (
-                <div className="w-full h-32 bg-slate-100 rounded-sm flex items-center justify-center">
-                  <div className="text-xs text-slate-300 font-bold uppercase">
-                    Data Grafik
+            <div className="p-8 flex flex-col gap-4 text-slate-900">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-100 rounded p-4">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase">Kekayaan Bersih</div>
+                  <div className="font-black">
+                    {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(summary.net_worth || 0)}
                   </div>
                 </div>
-              )}
-
-              {config.includeLedger && (
-                <div className="space-y-2">
-                  <div className="w-full h-4 bg-slate-100 rounded-sm" />
-                  <div className="w-[90%] h-4 bg-slate-100 rounded-sm" />
-                  <div className="w-[95%] h-4 bg-slate-100 rounded-sm" />
-                  <div className="w-[80%] h-4 bg-slate-100 rounded-sm" />
+                <div className="bg-slate-100 rounded p-4">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase">Total Utang</div>
+                  <div className="font-black text-red-500">
+                    {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(summary.total_utang || 0)}
+                  </div>
                 </div>
-              )}
-
-              {config.aiOpinion && (
-                <div className="mt-auto w-full h-24 bg-blue-50 border border-blue-100 rounded-sm p-3">
-                  <div className="w-1/3 h-3 bg-blue-200 rounded-sm mb-3" />
-                  <div className="w-full h-2 bg-blue-100 rounded-sm mb-1.5" />
-                  <div className="w-full h-2 bg-blue-100 rounded-sm mb-1.5" />
-                  <div className="w-2/3 h-2 bg-blue-100 rounded-sm" />
+                <div className="bg-slate-100 rounded p-4">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase">Pemasukan</div>
+                  <div className="font-black text-green-600">
+                    {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(summary.pemasukan || 0)}
+                  </div>
                 </div>
-              )}
-            </div>
-
-            {/* Hover overlay */}
-            <div
-              className={`absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center opacity-0 ${success ? "opacity-100" : "group-hover:opacity-100"} transition-opacity hidden`}
-            >
-              <button className="bg-white text-slate-900 px-6 py-3 rounded-full font-bold flex items-center gap-2 shadow-xl hover:scale-105 transition-transform">
-                <FileText size={18} /> Lihat PDF
-              </button>
+                <div className="bg-slate-100 rounded p-4">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase">Pengeluaran</div>
+                  <div className="font-black">
+                    {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(summary.pengeluaran || 0)}
+                  </div>
+                </div>
+              </div>
+              <div className="text-xs text-slate-500">
+                {transactions.length} transaksi di buku besar ·{" "}
+                {config.includeLedger ? "buku besar disertakan" : "buku besar tidak disertakan"} ·{" "}
+                {config.aiOpinion ? "opini J.A.R.V.I.S disertakan" : "tanpa opini AI"} ·{" "}
+                {config.includeCharts ? "grafik disertakan" : "tanpa grafik"}.
+              </div>
+              <div className="text-xs text-slate-400">
+                Pratinjau di atas memakai data yang sama dengan PDF yang akan
+                diunduh — klik “Buat Laporan PDF” untuk mengunduhnya.
+              </div>
             </div>
           </div>
         </div>

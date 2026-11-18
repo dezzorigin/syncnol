@@ -11,6 +11,7 @@ import {
 import toast from "react-hot-toast";
 import useAppStore from "../store/useAppStore";
 import { useLanguage } from "../context/LanguageContext";
+import { isDemoMode, resetDemoData } from "../lib/demo";
 
 const SETTINGS_KEY = "syncnol-settings-prefs";
 
@@ -18,14 +19,18 @@ function loadPrefs() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) return JSON.parse(raw);
-  } catch (_) {}
+  } catch {
+    /* localStorage tidak tersedia — pakai default */
+  }
   return { currency: "IDR", notifications: true, persona: "Roast" };
 }
 
 function savePrefs(prefs) {
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(prefs));
-  } catch (_) {}
+  } catch {
+    /* localStorage tidak tersedia — preferensi tidak tersimpan */
+  }
 }
 
 export default function SettingsPage() {
@@ -50,6 +55,10 @@ export default function SettingsPage() {
   const handleWipeData = () => {
     setTransactions([]);
     setSummary({ net_worth: 0, monthly_income: 0, pengeluaran: 0 });
+    if (isDemoMode) {
+      // Mode demo: kembalikan data contoh ke seed awal.
+      resetDemoData();
+    }
     toast.error("All transaction data has been permanently wiped", {
       icon: "🔥",
       style: { background: "#ef4444", color: "#fff" },

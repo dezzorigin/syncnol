@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 
 const useAppStore = create(
   persist(
-    (set, get) => ({
+    (set) => ({
       // Auth
       session: null,
       dbUserId: null,

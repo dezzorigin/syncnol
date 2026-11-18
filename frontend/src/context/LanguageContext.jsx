@@ -1,7 +1,10 @@
 import { createContext, useContext, useState } from "react";
 import { translations } from "../i18n/translations";
 
-// 5.1 – React Context to manage global language state
+// ─── React Context to manage global language state ──────────────────────────
+// Berkas ini sengaja mengekspor provider + hook pemakai dalam satu modul
+// (pola bawaan template Vite); pemisahan file tidak mengubah perilaku.
+/* eslint-disable react-refresh/only-export-components */
 const LanguageContext = createContext(null);
 
 export function LanguageProvider({ children }) {

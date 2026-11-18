@@ -114,7 +114,7 @@ export default function CalendarPage() {
     }
 
     return days;
-  }, [currentDate, transactions, reminders]);
+  }, [month, year, transactions, reminders]);
 
   // 4.2 – Click handler
   const handleDayClick = (dayObj) => {

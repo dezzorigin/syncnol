@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import axios from "axios";
+import { fetchSummary, fetchTransactions, deleteTransaction } from "../lib/api";
 import useAppStore from "../store/useAppStore";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import {
@@ -23,7 +23,7 @@ const COLORS = [
 ];
 
 export default function AnalyticsPage() {
-  const { dbUserId, transactions, setTransactions, summary, setSummary } =
+  const { dbUserId, transactions, setTransactions, setSummary } =
     useAppStore();
   const [filter, setFilter] = useState("all"); // all, in, out
   const [timeFilter, setTimeFilter] = useState("30d"); // 7d, 30d, all
@@ -33,11 +33,11 @@ export default function AnalyticsPage() {
     if (!dbUserId) return;
     try {
       const [s, t] = await Promise.all([
-        axios.get(`http://127.0.0.1:8000/api/users/${dbUserId}/summary`),
-        axios.get(`http://127.0.0.1:8000/api/users/${dbUserId}/transactions`),
+        fetchSummary(dbUserId),
+        fetchTransactions(dbUserId),
       ]);
-      if (s.data.status === "success") setSummary(s.data.data);
-      if (t.data.status === "success") setTransactions(t.data.data);
+      if (s.status === "success") setSummary(s.data);
+      if (t.status === "success") setTransactions(t.data);
     } catch (e) {
       console.error(e);
     }
@@ -50,7 +50,7 @@ export default function AnalyticsPage() {
   const handleDelete = async (id) => {
     setDeleting(id);
     try {
-      await axios.delete(`http://127.0.0.1:8000/api/transactions/${id}`);
+      await deleteTransaction(id);
       toast.success("Transaction Deleted", { icon: "🗑️" });
       fetchData();
     } catch (e) {

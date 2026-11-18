@@ -109,8 +109,11 @@ export default function Sidebar() {
 
       {/* Nav Links */}
       <nav className="flex-1 overflow-y-auto p-3 flex flex-col gap-1">
-        {filteredNav.map(({ path, icon: Icon, key }) => {
+        {filteredNav.map(({ path, icon, key }) => {
           const label = t(key);
+          // Alias const (bukan param destruktur) supaya eslint menghitung
+          // pemakaian komponen ikon di JSX.
+          const ItemIcon = icon;
           return (
             <NavLink
               key={path}
@@ -126,7 +129,7 @@ export default function Sidebar() {
               `}
               title={collapsed ? label : undefined}
             >
-              <Icon size={20} className={collapsed ? "" : "flex-shrink-0"} />
+              <ItemIcon size={20} className={collapsed ? "" : "flex-shrink-0"} />
               {!collapsed && <span className="whitespace-nowrap">{label}</span>}
             </NavLink>
           );

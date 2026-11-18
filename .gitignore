@@ -1,13 +1,64 @@
+# ─── SyncNol .gitignore ─────────────────────────────────────────────────────
+# Pola `^.env.*` dari versi lama TIDAK VALID di gitignore (itu sintaks
+# regex — gitignore tidak pernah mengabaikan .env karenanya). Semua pola
+# env di bawah memakai sintaks gitignore yang benar.
+
+# Dependencies
 node_modules/
-.env
-__pycache__/
-*.pyc
-.DS_Store
+frontend/node_modules/
+.venv/
+venv/
+
+# Build output
 dist/
 build/
-.env.local
-chroma_db/
-^.env.*
+frontend/dist/
 .next/
-.venv/
-^.env.*
+
+# Environment & secrets — JANGAN PERNAH commit file-file ini
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.db
+# Database lokal + vektor RAG (dibuat ulang saat runtime; dulu keduanya
+# sempat ter-commit — lihat CHANGELOG):
+backend/syncnol_local.db
+backend/chroma_db/
+chroma_db/
+
+# OS / editor
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Playwright (CI + lokal)
+test-results/
+playwright-report/
+frontend/test-results/
+frontend/playwright-report/

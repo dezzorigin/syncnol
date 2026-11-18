@@ -26,4 +26,10 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  // File tooling Node (config Playwright + skrip e2e): `process` dsb. adalah
+  // global Node, bukan browser.
+  {
+    files: ['playwright.config.js', 'e2e/**/*.{js,ts}'],
+    languageOptions: { globals: globals.node },
+  },
 ])

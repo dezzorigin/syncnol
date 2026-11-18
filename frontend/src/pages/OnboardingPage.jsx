@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import useAppStore from "../store/useAppStore";
-import axios from "axios";
+import { syncUser, completeOnboarding as completeOnboardingApi } from "../lib/api";
 import { supabase } from "../supabaseClient";
 import { CheckCircle2 } from "lucide-react";
 
@@ -84,6 +84,8 @@ export default function OnboardingPage() {
         }));
       }
     });
+    // Hanya sekali saat mount — answers.name sengaja tidak jadi dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const currentStep = STEPS[step];
@@ -106,30 +108,24 @@ export default function OnboardingPage() {
             data: { session },
           } = await supabase.auth.getSession();
           if (session) {
-            const res = await axios.post(
-              "http://127.0.0.1:8000/api/sync-user",
-              {
-                email: session.user.email,
-                nama: answers.name || session.user.email.split("@")[0],
-              },
+            const res = await syncUser(
+              session.user.email,
+              answers.name || session.user.email.split("@")[0],
             );
-            if (res.data.status === "success") {
-              currentUserId = res.data.user_id;
+            if (res.status === "success") {
+              currentUserId = res.user_id;
               setDbUserId(currentUserId);
             }
           }
         }
 
         if (currentUserId) {
-          await axios.post(
-            `http://127.0.0.1:8000/api/users/${currentUserId}/onboarding`,
-            {
-              nama: answers.name,
-              pekerjaan: "Agent",
-              tujuan_keuangan: answers.goal,
-              pendapatan_bulanan: parseFloat(answers.monthly_income) || 0,
-            },
-          );
+          await completeOnboardingApi(currentUserId, {
+            nama: answers.name,
+            pekerjaan: "Agent",
+            tujuan_keuangan: answers.goal,
+            pendapatan_bulanan: parseFloat(answers.monthly_income) || 0,
+          });
           setUserName(answers.name);
         }
       } catch (err) {

@@ -6,6 +6,10 @@ import chromadb
 
 # 1. Buka brankas
 load_dotenv()
+import sys
+if not os.getenv("GEMINI_API_KEY"):
+    raise SystemExit("GEMINI_API_KEY belum diset — isi .env dulu (lihat .env.example).")
+
 client = genai.Client()
 
 print("📚 Mengirim AI ke Fakultas Hukum OJK...")

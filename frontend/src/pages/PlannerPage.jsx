@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Target, Calculator, Plus, Trash2, Calendar, PiggyBank, RefreshCw, CheckCircle2, Wallet } from "lucide-react";
 import { supabase } from "../supabaseClient";
+import { isDemoMode } from "../supabaseClient";
 import useAppStore from "../store/useAppStore";
 import toast from "react-hot-toast";
 
@@ -30,11 +31,7 @@ export default function PlannerPage() {
   const [depositAmount, setDepositAmount] = useState("");
 
   // ─── 2A: Fetch goals from Supabase on mount ────────────────────────────────
-  useEffect(() => {
-    fetchGoals();
-  }, [dbUserId]);
-
-  const fetchGoals = async () => {
+  const fetchGoals = useCallback(async () => {
     if (!dbUserId) { setLoading(false); return; }
     setLoading(true);
     try {
@@ -52,7 +49,15 @@ export default function PlannerPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dbUserId]);
+
+  // Muat goals saat mount. Pengecualian aturan set-state-in-effect:
+  // setter di sini berjalan SETELAH await (baca Supabase/demo), bukan
+  // sinkron di badan effect — pola fetch-on-mount standar halaman ini.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchGoals();
+  }, [fetchGoals]);
 
   // ─── 2B: Add goal → Supabase ───────────────────────────────────────────────
   const handleAddGoal = async (e) => {
@@ -93,7 +98,7 @@ export default function PlannerPage() {
       if (error) throw error;
       setGoals((prev) => prev.filter((g) => g.id !== id));
       toast.success("Goal dihapus.");
-    } catch (err) {
+    } catch {
       toast.error("Gagal menghapus goal.");
     }
   };
@@ -119,7 +124,7 @@ export default function PlannerPage() {
       toast.success(`+Rp ${formatCurrency(amount)} disimpan ke "${depositModal.name}"`, { icon: "💰" });
       setDepositModal(null);
       setDepositAmount("");
-    } catch (err) {
+    } catch {
       toast.error("Gagal deposit. Cek koneksi Supabase.");
     }
   };
@@ -137,7 +142,11 @@ export default function PlannerPage() {
             <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Goal Tracker</span>
           </div>
           <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Savings Planner</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Goals tersinkronisasi langsung ke Supabase.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            {isDemoMode
+              ? "Mode demo: goals tersimpan di browser ini."
+              : "Goals tersinkronisasi langsung ke Supabase."}
+          </p>
         </div>
         <button
           onClick={fetchGoals}
