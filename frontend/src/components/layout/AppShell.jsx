@@ -4,7 +4,7 @@ import { LayoutDashboard, BarChart3, Lock, Users, SlidersHorizontal } from "luci
 import { supabase } from "../../supabaseClient";
 import useAppStore from "../../store/useAppStore";
 import Sidebar from "./Sidebar";
-import axios from "axios";
+import { syncUser } from "../../lib/api";
 
 export default function AppShell() {
   const navigate = useNavigate();
@@ -30,22 +30,19 @@ export default function AppShell() {
       setSession(session);
       try {
         const namaDariEmail = session.user.email.split("@")[0];
-        const res = await axios.post("http://127.0.0.1:8000/api/sync-user", {
-          email: session.user.email,
-          nama: namaDariEmail,
-        });
-        if (res.data.status === "success") {
-          setDbUserId(res.data.user_id);
+        const res = await syncUser(session.user.email, namaDariEmail);
+        if (res.status === "success") {
+          setDbUserId(res.user_id);
           setUserName(namaDariEmail);
 
-          if (res.data.needs_onboarding) {
+          if (res.needs_onboarding) {
             navigate("/onboarding", { replace: true });
             return;
           } else if (!useAppStore.getState().onboardingDone) {
             useAppStore.getState().completeOnboarding();
           }
         }
-      } catch (err) {
+      } catch {
         setUserName(session.user.email.split("@")[0]);
         if (!useAppStore.getState().onboardingDone) {
           navigate("/onboarding", { replace: true });

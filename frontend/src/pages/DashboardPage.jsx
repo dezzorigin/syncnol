@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AreaChart,
@@ -9,9 +9,15 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import axios from "axios";
 import toast from "react-hot-toast";
 import useAppStore from "../store/useAppStore";
+import {
+  fetchSummary,
+  fetchTransactions,
+  createTransaction,
+  sendNudge,
+  sendReceiptChat,
+} from "../lib/api";
 import {
   Send,
   Zap,
@@ -29,22 +35,6 @@ import {
 } from "lucide-react";
 
 const formatIDR = (num) => new Intl.NumberFormat('id-ID').format(num);
-
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-  }).format(Number(value) || 0);
-};
-
-const GREETINGS = [
-  "Pagi. Kekayaan stabil, tapi tagihan server besok. Kurangi kopi hari ini.",
-  "Agen. Tingkat tabunganmu turun 3% bulan ini. Kita perlu bicara.",
-  "Selamat pagi. Ada 2 kebocoran rutin yang belum kuberitahu. Buka Bebas Hutang.",
-  "Kembali lagi. Dana daruratmu cukup untuk 12 hari. Targetnya 90. Fokus.",
-  "Bangun dan bekerja. Pendapatan pasif: Rp 0. Pendapatan aktif: stagnan. Waktunya perbaiki keduanya.",
-];
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -67,9 +57,16 @@ export default function DashboardPage() {
   const { dbUserId, summary, transactions, setSummary, setTransactions } =
     useAppStore();
 
-  const [greeting] = useState(
-    GREETINGS[Math.floor(Math.random() * GREETINGS.length)],
-  );
+  const [greeting] = useState(() => {
+    const options = [
+      "Pagi. Kekayaan stabil, tapi tagihan server besok. Kurangi kopi hari ini.",
+      "Agen. Tingkat tabunganmu turun 3% bulan ini. Kita perlu bicara.",
+      "Selamat pagi. Ada 2 kebocoran rutin yang belum kuberitahu. Buka Bebas Hutang.",
+      "Kembali lagi. Dana daruratmu cukup untuk 12 hari. Targetnya 90. Fokus.",
+      "Bangun dan bekerja. Pendapatan pasif: Rp 0. Pendapatan aktif: stagnan. Waktunya perbaiki keduanya.",
+    ];
+    return options[Math.floor(Math.random() * options.length)];
+  });
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [panicMode, setPanicMode] = useState(false);
@@ -82,10 +79,44 @@ export default function DashboardPage() {
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
 
-  const [netWorth, setNetWorth] = useState(0);
-  const [totalDebt, setTotalDebt] = useState(0);
-  const [dailyBudget, setDailyBudget] = useState(0);
-  const [chartData, setChartData] = useState([]);
+  // Nilai turunan dari summary + transaksi (bukan state — dihitung ulang
+  // tiap summary/transactions berubah, tanpa setState di dalam effect).
+  const netWorth = summary.net_worth || 0;
+  const totalDebt = summary.total_utang || 0;
+  const dailyBudget = useMemo(() => {
+    const today = new Date();
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const remainingDays = Math.max(1, lastDayOfMonth - today.getDate() + 1);
+    const availableCash = Math.max(0, netWorth - totalDebt);
+    return Math.floor(availableCash / remainingDays);
+  }, [netWorth, totalDebt]);
+  const chartData = useMemo(() => {
+    // No dummy data — only render chart when real transactions exist
+    if (transactions.length === 0) return [];
+    let balance = netWorth;
+    const points = [...transactions].reverse().map((t) => {
+      const point = {
+        name: new Date(t.tanggal || Date.now()).toLocaleDateString("id-ID", { month: "short", day: "numeric" }),
+        balance,
+      };
+      if (t.jenis === "Pemasukan") balance -= t.nominal;
+      else balance += t.nominal;
+      return point;
+    });
+    return [{ name: "Mulai", balance }, ...points];
+  }, [transactions, netWorth]);
+
+  // Perubahan bersih HARI INI (bukan angka hardcode) — dari transaksi
+  // bertanggal hari ini; 0 kalau belum ada transaksi hari ini.
+  const todayNet = useMemo(() => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    return transactions
+      .filter((t) => (t.tanggal || "").startsWith(todayStr))
+      .reduce(
+        (s, t) => s + (t.jenis === "Pemasukan" ? Number(t.nominal) : -Number(t.nominal)),
+        0,
+      );
+  }, [transactions]);
 
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualType, setManualType] = useState("Expense");
@@ -148,13 +179,14 @@ export default function DashboardPage() {
   const fetchData = useCallback(async () => {
     if (!dbUserId) return;
     try {
-      // PHASE 1.3: Centralized Data Fetching Verified
+      // Satu pintu API (backend FastAPI kalau VITE_API_URL diset, kalau
+      // tidak: lapisan demo lokal) — lihat src/lib/api.js.
       const [sumRes, trxRes] = await Promise.all([
-        axios.get(`http://127.0.0.1:8000/api/users/${dbUserId}/summary`),
-        axios.get(`http://127.0.0.1:8000/api/users/${dbUserId}/transactions`),
+        fetchSummary(dbUserId),
+        fetchTransactions(dbUserId),
       ]);
-      if (sumRes.data.status === "success") setSummary(sumRes.data.data);
-      if (trxRes.data.status === "success") setTransactions(trxRes.data.data);
+      if (sumRes.status === "success") setSummary(sumRes.data);
+      if (trxRes.status === "success") setTransactions(trxRes.data);
     } catch (e) {
       console.error("Data fetch error:", e);
     }
@@ -177,22 +209,15 @@ export default function DashboardPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
     setChatLoading(true);
     try {
-      // PHASE 1.2: J.A.R.V.I.S State Reconciliation
-      let apiUrl = "http://127.0.0.1:8000/api/nudge";
-      let requestBody = { pesan_user: userMsg.text, user_id: dbUserId };
-      
+      // J.A.R.V.I.S: teks → /api/nudge (auto-journaling), gambar struk →
+      // /api/chat (OCR). Di mode demo keduanya dilayani lokal.
+      let data;
       if (userMsg.image) {
-        apiUrl = "http://127.0.0.1:8000/api/chat";
-        requestBody = { message: userMsg.text, image: userMsg.image };
+        data = await sendReceiptChat({ message: userMsg.text, image: userMsg.image });
+      } else {
+        data = await sendNudge({ user_id: dbUserId, pesan_user: userMsg.text });
       }
-
-      const res = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      });
-      const data = await res.json();
-      let aiText = data.ai_roast || data.response || "Tidak ada respons";
+      const aiText = data.ai_roast || data.response || "Tidak ada respons";
 
       setMessages((p) => [...p, { sender: "ai", text: aiText }]);
       await fetchData();
@@ -209,38 +234,6 @@ export default function DashboardPage() {
     }
   };
 
-  useEffect(() => {
-    const baseNetWorth = summary.net_worth || 0;
-    const baseDebt = summary.total_utang || 0;
-
-    setNetWorth(baseNetWorth);
-    setTotalDebt(baseDebt);
-
-    // Daily Budget: (Total Cash - Total Debt) / Remaining Days in Month
-    const today = new Date();
-    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-    const remainingDays = Math.max(1, lastDayOfMonth - today.getDate() + 1);
-    const availableCash = Math.max(0, baseNetWorth - baseDebt);
-    setDailyBudget(Math.floor(availableCash / remainingDays));
-
-    // No dummy data — only render chart when real transactions exist
-    if (transactions.length > 0) {
-      let balance = baseNetWorth;
-      const points = [...transactions].reverse().map((t) => {
-        const point = {
-          name: new Date(t.tanggal || Date.now()).toLocaleDateString("id-ID", { month: "short", day: "numeric" }),
-          balance,
-        };
-        if (t.jenis === "Pemasukan") balance -= t.nominal;
-        else balance += t.nominal;
-        return point;
-      });
-      setChartData([{ name: "Mulai", balance }, ...points]);
-    } else {
-      setChartData([]);
-    }
-  }, [summary, transactions]);
-
   const handleManualSubmit = async (e) => {
     e.preventDefault();
     const rawAmount = manualAmount || 0;
@@ -249,17 +242,16 @@ export default function DashboardPage() {
     try {
       const typeStr = manualType === "Income" ? "Pemasukan" : "Pengeluaran";
       const catStr = manualType === "Debt Payment" ? "Bayar Utang" : (manualDesc || "Manual");
-      
-      // PHASE 1.1: Dashboard Manual Entry Sync - Async write to DB BEFORE local store update
-      const res = await axios.post("http://127.0.0.1:8000/api/transactions", {
+
+      const res = await createTransaction({
         jenis_transaksi: typeStr,
         kategori: catStr,
         nominal: rawAmount,
         keterangan: manualDesc || manualType,
-        user_id: dbUserId
+        user_id: dbUserId,
       });
 
-      if (res.data.status === "success") {
+      if (res.status === "success") {
         toast.success("Data tersinkronisasi ke database.");
         // Fetch the latest state directly from backend to avoid overwriting with stale data
         await fetchData();
@@ -268,7 +260,7 @@ export default function DashboardPage() {
         setManualAmount("");
         setManualDesc("");
       } else {
-        toast.error("Gagal menyimpan: " + res.data.pesan);
+        toast.error("Gagal menyimpan: " + res.pesan);
       }
     } catch (error) {
       console.error("Manual entry error:", error);
@@ -316,12 +308,19 @@ export default function DashboardPage() {
               <span className="flex items-center gap-1 text-sm md:text-base font-bold text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-900/20 px-2.5 py-1 rounded-xl">
                 <ArrowDownRight size={16} /> Defisit
               </span>
+            ) : todayNet !== 0 ? (
+              <span className={`flex items-center gap-1 text-sm md:text-base font-bold px-2.5 py-1 rounded-xl ${todayNet > 0 ? "text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-500/10" : "text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-900/20"}`}>
+                {todayNet > 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />} {todayNet > 0 ? "+" : "−"}{formatIDR(Math.abs(todayNet))} Hari Ini
+              </span>
             ) : (
-              <span className="flex items-center gap-1 text-sm md:text-base font-bold text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-500/10 px-2.5 py-1 rounded-xl">
-                <ArrowUpRight size={16} /> +{formatIDR(2500000)} (5.2%) Hari Ini
+              <span className="text-sm md:text-base font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-xl">
+                Belum ada transaksi hari ini
               </span>
             )}
           </div>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-xl">
+            {greeting}
+          </p>
         </div>
         <div className="text-xs md:text-sm text-slate-500 dark:text-slate-400 text-right flex-shrink-0 font-medium hidden sm:block">
           {new Date().toLocaleDateString("id-ID", {
@@ -382,12 +381,17 @@ export default function DashboardPage() {
                   />
                   <YAxis
                     domain={['auto', 'auto']}
-                    width={85}
+                    width={64}
                     stroke="currentColor"
                     className="text-slate-400 dark:text-slate-600 text-[10px]"
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(value) => formatIDR(value)}
+                    tickFormatter={(value) => {
+                      const abs = Math.abs(value);
+                      if (abs >= 1e6) return `${(value / 1e6).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`;
+                      if (abs >= 1e3) return `${Math.round(value / 1e3)} rb`;
+                      return formatIDR(value);
+                    }}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Area

@@ -13,14 +13,15 @@ import {
   ChevronRight,
   Terminal,
 } from "lucide-react";
+import GithubIcon from "../components/ui/GithubIcon.jsx";
 
 // ─── Typewriter Hook ──────────────────────────────────────────────────────────
 function useTypewriter(text, speed = 28, startDelay = 0) {
   const [displayed, setDisplayed] = useState("");
   const [done, setDone] = useState(false);
   useEffect(() => {
-    setDisplayed("");
-    setDone(false);
+    // Teks yang diketik di landing ini konstan, jadi state awal "" sudah
+    // benar — tidak ada reset sinkron di dalam effect.
     let i = 0;
     const timeout = setTimeout(() => {
       const interval = setInterval(() => {
@@ -236,13 +237,23 @@ function Navbar({ dark, toggleDark }) {
             {dark ? <Sun size={16} /> : <Moon size={16} />}
           </button>
           <a
+            href="https://github.com/dezzorigin/syncnol"
+            target="_blank"
+            rel="noreferrer"
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            aria-label="Lihat kode sumber di GitHub"
+            title="GitHub — dezzorigin/syncnol"
+          >
+            <GithubIcon size={16} />
+          </a>
+          <a
             href="/auth"
             className="hidden sm:block text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors px-3 py-2"
           >
             Sign In
           </a>
           <a
-            href="/dashboard"
+            href="/app/dashboard"
             className="flex items-center gap-1.5 text-sm font-semibold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-4 py-2 rounded-xl shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
           >
             Launch Workspace
@@ -256,12 +267,13 @@ function Navbar({ dark, toggleDark }) {
 
 // ─── Main LandingPage ─────────────────────────────────────────────────────────
 export default function LandingPage() {
-  const [dark, setDark] = useState(false);
-
-  useEffect(() => {
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    setDark(prefersDark);
-  }, []);
+  // Ikuti preferensi sistem — dibaca sekali saat mount (lazy init),
+  // bukan lewat setState di dalam effect.
+  const [dark, setDark] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches,
+  );
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -315,7 +327,7 @@ export default function LandingPage() {
                 <ArrowRight size={17} />
               </a>
               <a
-                href="/dashboard"
+                href="/app/dashboard"
                 className="w-full sm:w-auto flex items-center justify-center gap-2 font-medium text-base text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-7 py-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white/60 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800 transition-all duration-200"
               >
                 View Dashboard
@@ -414,6 +426,14 @@ export default function LandingPage() {
             © {new Date().getFullYear()} SyncNol. Your money, your co-pilot.
           </p>
           <div className="flex items-center gap-4 text-xs text-slate-400 dark:text-slate-600">
+            <a
+              href="https://github.com/dezzorigin/syncnol"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 hover:text-slate-600 dark:hover:text-slate-400 transition-colors"
+            >
+              <GithubIcon size={13} /> GitHub
+            </a>
             <a href="#" className="hover:text-slate-600 dark:hover:text-slate-400 transition-colors">Privacy</a>
             <a href="#" className="hover:text-slate-600 dark:hover:text-slate-400 transition-colors">Terms</a>
           </div>

@@ -1,0 +1,242 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Frontend: build ─────────────────────────────────────────────────────
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build (Vite)
+        run: npm run build
+        working-directory: frontend
+
+      - name: Built output contains landing hero + GitHub link
+        run: |
+          set -euo pipefail
+          test -s frontend/dist/index.html
+          grep -rq "Your smart" frontend/dist/assets/ \
+            || (echo "hero hilang dari bundle" && exit 1)
+          grep -rq "github.com/dezzorigin/syncnol" frontend/dist/assets/ \
+            || (echo "tautan GitHub hilang dari bundle" && exit 1)
+          grep -rq "Everything your money needs" frontend/dist/assets/ \
+            || (echo "seksi fitur hilang dari bundle" && exit 1)
+          echo "bundle: hero + GitHub + fitur OK"
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: frontend/dist/
+
+  # ── Frontend: lint (0 error) ────────────────────────────────────────────
+  frontend-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Lint (0 error)
+        run: npm run lint
+        working-directory: frontend
+
+  # ── Frontend: Playwright e2e (mode demo, tanpa Supabase/backend) ───────
+  playwright-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+
+      - name: Build (Vite)
+        run: npm run build
+        working-directory: frontend
+
+      - name: Run e2e
+        run: npm run test:e2e
+        working-directory: frontend
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+
+  # ── Backend: unit test (stdlib unittest + FastAPI TestClient) ───────────
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Compile all Python sources
+        run: python3 -m compileall -q backend ai_engine
+
+      - name: Run backend tests
+        run: python3 -m unittest discover -s backend/tests -v
+
+  # ── Backend: smoke boot (SQLite sementara, tanpa GEMINI_API_KEY) ───────
+  backend-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Boot + smoke test
+        run: |
+          set -euo pipefail
+          cd backend
+          DATABASE_URL="sqlite:////tmp/syncnol-ci.db" \
+            nohup python3 -m uvicorn main:app --port 8123 --host 127.0.0.1 \
+            > /tmp/syncnol-uvicorn.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8123/api/health >/dev/null 2>&1 && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8123/api/health | grep -q '"genai_configured":false' \
+            && echo "health: genai_configured=false OK"
+          curl -fsS -X POST http://127.0.0.1:8123/api/users \
+            -H 'Content-Type: application/json' \
+            -d '{"nama":"CI","email":"ci@syncnol.id","pendapatan_bulanan":5000000}' \
+            | grep -q '"status":"success"' && echo "create user: OK"
+          curl -fsS http://127.0.0.1:8123/api/users/1/summary \
+            | grep -q '"monthly_income":5000000.0' && echo "summary: OK"
+
+  # ── Gate keamanan dependensi produksi (OSV batch, tanpa auth) ──────────
+  # Pengganti `npm audit --omit=dev`: audit tetap melaporkan advisory yang
+  # hanya reachable lewat dev deps (bug npm yang diketahui), sehingga job
+  # audit lama gagal deterministik pada temuan HIGH dev-only padahal pohon
+  # produksi bersih. Versi GitHub Advisory DB + GITHUB_TOKEN SUDAH
+  # DIHAPUS: gagal 5x deterministik 401 di CI orteam (token per-job
+  # bermasalah). OSV memirror GHSA, tanpa auth, satu POST batch.
+  advisory-sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Advisory sweep (production, high and above)
+        run: python3 scripts/advisory-sweep.py
+
+  # ── Smoke test: sajikan dist/ + curl ───────────────────────────────────
+  smoke:
+    needs: frontend-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: frontend/dist
+
+      - name: Serve + smoke test
+        run: |
+          set -euo pipefail
+          (PORT=8335 node scripts/serve.mjs frontend/dist > /tmp/syncnol-serve.log 2>&1 &)
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8335/ >/dev/null 2>&1 && break
+            sleep 1
+          done
+          # Landing: hero + navbar GitHub + preview produk + fitur + footer.
+          # Catatan: landing dirender client-side — yang dicek di sini
+          # adalah HTML statis + bundle JS berisi string-string itu.
+          curl -fsS http://127.0.0.1:8335/ | grep -q "SyncNol" \
+            && echo "landing: title OK"
+          curl -fsS http://127.0.0.1:8335/ | grep -q "assets/index-" \
+            && echo "landing: bundle OK"
+          # Rute SPA: /auth + /app/dashboard merespons 200 (fallback SPA)
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8335/auth)
+          [ "$code" = "200" ] || (echo "/auth harus 200, dapat $code" && exit 1)
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8335/app/dashboard)
+          [ "$code" = "200" ] || (echo "/app/dashboard harus 200, dapat $code" && exit 1)
+          echo "rute SPA: 200 OK"
+
+  # ── Dokumen wajib ada ───────────────────────────────────────────────────
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check docs
+        run: |
+          set -euo pipefail
+          for f in README.md PRD.md CHANGELOG.md \
+              docs/ARCHITECTURE.md docs/API.md docs/FRONTEND.md \
+              docs/BACKEND.md docs/DEPLOYMENT.md docs/DEMO.md \
+              docs/DIAGRAMS.html frontend/README.md \
+              backend/.env.example frontend/.env.example; do
+            test -s "$f" || (echo "hilang/kosong: $f" && exit 1)
+          done
+          grep -q "<svg" docs/DIAGRAMS.html || (echo "DIAGRAMS.html tanpa SVG" && exit 1)
+          # Diagram gaya diagram-design: HTML+SVG, BUKAN Mermaid.
+          grep -qi "mermaid" docs/DIAGRAMS.html \
+            && (echo "DIAGRAMS.html masih mengandung Mermaid" && exit 1)
+          grep -q "docs/screenshots/01-landing-hero.png" README.md \
+            || (echo "README tanpa screenshot landing" && exit 1)
+          grep -q "Video demo" README.md \
+            || (echo "README tanpa video demo" && exit 1)
+          test -s docs/demo/demo.mp4 || (echo "video demo hilang" && exit 1)
+          test -s docs/screenshots/04-dashboard.png || (echo "screenshot dashboard hilang" && exit 1)
+          test -s docs/screenshots/06-wingman.png || (echo "screenshot wingman hilang" && exit 1)
+          echo "docs: semua berkas ada"

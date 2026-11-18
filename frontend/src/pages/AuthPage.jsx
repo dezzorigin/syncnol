@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "../supabaseClient";
-import { Zap, ShieldCheck } from "lucide-react";
+import { supabase, isDemoMode } from "../supabaseClient";
+import { Zap, ShieldCheck, Play } from "lucide-react";
 import useAppStore from "../store/useAppStore";
 
 export default function AuthPage() {
@@ -64,6 +64,30 @@ export default function AuthPage() {
   };
 
   const isSignup = mode === "signup";
+
+  // Mode demo: sekali ketuk langsung masuk dengan akun demo lokal
+  // (demo@syncnol.id) berisi data seed — tanpa Supabase, tanpa backend.
+  const handleDemoLogin = async () => {
+    setError("");
+    setMessage("");
+    setLoading(true);
+    try {
+      const email = "demo@syncnol.id";
+      const password = "demo1234";
+      let { error: err } = await supabase.auth.signInWithPassword({ email, password });
+      if (err) {
+        const { error: signUpErr } = await supabase.auth.signUp({ email, password });
+        if (signUpErr) throw signUpErr;
+        ({ error: err } = await supabase.auth.signInWithPassword({ email, password }));
+        if (err) throw err;
+      }
+      navigate("/app/dashboard", { replace: true });
+    } catch (err) {
+      setError(err.message || "Gagal masuk mode demo.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0B0F19] text-slate-900 dark:text-slate-50 flex items-center justify-center p-6 relative font-sans transition-colors duration-300">
@@ -193,6 +217,24 @@ export default function AuthPage() {
             </span>
             <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
           </div>
+
+          {isDemoMode && (
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={handleDemoLogin}
+                disabled={loading}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3.5 rounded-xl transition-all active:scale-[0.98] flex justify-center items-center gap-2 disabled:opacity-70"
+              >
+                <Play size={16} />
+                {loading ? "Memuat demo..." : "Coba Mode Demo — tanpa daftar"}
+              </button>
+              <p className="mt-3 text-center text-xs text-slate-400 leading-relaxed">
+                Mode demo: tanpa Supabase &amp; backend. Akun demo berisi data
+                contoh dan tersimpan hanya di browser ini.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

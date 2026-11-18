@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SyncNol — Diagram Arsitektur</title>
+<style>
+  :root { --ink:#1c1917; --muted:#57534e; --line:#e7e0d4; --card:#fff; --bg:#faf7f2; --accent:#0284c7; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 -apple-system,"Segoe UI",Inter,Roboto,sans-serif; }
+  header { max-width:960px; margin:0 auto; padding:56px 24px 8px; }
+  header p.kicker { text-transform:uppercase; letter-spacing:.14em; font-size:12px; color:var(--muted); margin:0 0 8px; }
+  header h1 { font-size:40px; line-height:1.05; letter-spacing:-.03em; margin:0 0 12px; }
+  header p.lede { color:var(--muted); max-width:640px; margin:0; }
+  main { max-width:960px; margin:0 auto; padding:24px; }
+  figure { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:28px 24px; margin:0 0 24px; }
+  figcaption { margin-top:16px; }
+  figcaption h2 { font-size:20px; letter-spacing:-.02em; margin:0 0 4px; }
+  figcaption p { color:var(--muted); margin:0; font-size:14px; }
+  .num { display:inline-block; width:28px; height:28px; line-height:28px; text-align:center; border-radius:50%; background:var(--accent); color:#fff; font-size:13px; font-weight:700; margin-right:8px; vertical-align:2px; }
+  footer { max-width:960px; margin:0 auto; padding:0 24px 56px; color:var(--muted); font-size:13px; }
+  svg { width:100%; height:auto; display:block; }
+  .box { fill:#fff; stroke:#1c1917; stroke-width:1.5; }
+  .box-fill { fill:#1c1917; stroke:#1c1917; stroke-width:1.5; }
+  .box-soft { fill:#faf7f2; stroke:#e7e0d4; stroke-width:1.5; }
+  .box-accent { fill:#0284c7; stroke:#0284c7; stroke-width:1.5; }
+  .lbl { font:600 14px -apple-system,"Segoe UI",Inter,sans-serif; fill:#1c1917; }
+  .lbl-w { font:600 14px -apple-system,"Segoe UI",Inter,sans-serif; fill:#fff; }
+  .sub { font:400 12px -apple-system,"Segoe UI",Inter,sans-serif; fill:#57534e; }
+  .sub-w { font:400 12px -apple-system,"Segoe UI",Inter,sans-serif; fill:#d6d3d1; }
+  .arr { stroke:#1c1917; stroke-width:1.5; fill:none; marker-end:url(#ah); }
+  .arr-dash { stroke:#a8a29e; stroke-width:1.5; fill:none; stroke-dasharray:5 4; marker-end:url(#ah); }
+  .tag { font:700 11px -apple-system,"Segoe UI",Inter,sans-serif; fill:#57534e; letter-spacing:.08em; }
+</style>
+</head>
+<body>
+<header>
+  <p class="kicker">SyncNol · Diagram</p>
+  <h1>Arsitektur, data &amp; alur chat keuangan</h1>
+  <p class="lede">Tiga diagram editorial — bukan Mermaid. Arsitektur runtime (apa yang jalan di Pages dan apa yang
+  opsional di belakangnya), model data (apa yang disimpan — Postgres/SQLite, Supabase, dan localStorage mode demo),
+  dan alur J.A.R.V.I.S (apa yang terjadi saat pengguna mengetik "beli kopi 22 ribu"). Dibuat mengikuti gaya
+  diagram-design: HTML + SVG murni.</p>
+</header>
+<main>
+
+<figure>
+<svg viewBox="0 0 880 470" role="img" aria-label="Diagram arsitektur runtime SyncNol">
+  <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1c1917"/></marker></defs>
+  <text class="tag" x="20" y="24">RUNTIME — CLOUDFLARE PAGES (STATIC) + OPSIONAL DI BELAKANGNYA</text>
+  <rect class="box" x="20" y="44" width="180" height="76" rx="12"/>
+  <text class="lbl" x="110" y="76" text-anchor="middle">Browser</text>
+  <text class="sub" x="110" y="96" text-anchor="middle">pengguna SyncNol</text>
+  <rect class="box-fill" x="280" y="44" width="220" height="76" rx="12"/>
+  <text class="lbl-w" x="390" y="76" text-anchor="middle">Cloudflare Pages</text>
+  <text class="sub-w" x="390" y="96" text-anchor="middle">syncnol.pages.dev</text>
+  <rect class="box-soft" x="580" y="44" width="280" height="76" rx="12"/>
+  <text class="lbl" x="720" y="70" text-anchor="middle">Vite build (dist/)</text>
+  <text class="sub" x="720" y="90" text-anchor="middle">React 19 · Tailwind 4 · SPA</text>
+  <rect class="box-soft" x="280" y="170" width="220" height="76" rx="12"/>
+  <text class="lbl" x="390" y="196" text-anchor="middle">Mode demo lokal</text>
+  <text class="sub" x="390" y="216" text-anchor="middle">localStorage · seed · parser</text>
+  <rect class="box-accent" x="580" y="170" width="280" height="76" rx="12"/>
+  <text class="lbl-w" x="720" y="196" text-anchor="middle">FastAPI backend</text>
+  <text class="sub-w" x="720" y="216" text-anchor="middle">opsional · VITE_API_URL</text>
+  <rect class="box" x="580" y="286" width="280" height="76" rx="12"/>
+  <text class="lbl" x="720" y="312" text-anchor="middle">Supabase Auth</text>
+  <text class="sub" x="720" y="332" text-anchor="middle">opsional · goals · academy_progress</text>
+  <rect class="box-soft" x="280" y="286" width="220" height="76" rx="12"/>
+  <text class="lbl" x="390" y="312" text-anchor="middle">Postgres / SQLite</text>
+  <text class="sub" x="390" y="332" text-anchor="middle">users · debts · transactions</text>
+  <rect class="box-soft" x="20" y="286" width="180" height="76" rx="12"/>
+  <text class="lbl" x="110" y="312" text-anchor="middle">Gemini + RAG</text>
+  <text class="sub" x="110" y="332" text-anchor="middle">ChromaDB · POJK (329 dok)</text>
+  <path class="arr" d="M200,82 H280"/>
+  <path class="arr" d="M500,82 H580"/>
+  <path class="arr-dash" d="M390,120 V170"/>
+  <path class="arr-dash" d="M500,208 H580"/>
+  <path class="arr-dash" d="M720,246 V286"/>
+  <path class="arr-dash" d="M580,324 H500"/>
+  <path class="arr-dash" d="M280,324 H200"/>
+  <text class="sub" x="20" y="420">Garis putus-putus = opsional. Tanpa backend &amp; Supabase, aplikasi jalan penuh dalam mode demo.</text>
+  <text class="sub" x="20" y="440">Deploy saat ini: Pages tanpa env — mode demo.</text>
+</svg>
+<figcaption><h2><span class="num">1</span>Arsitektur runtime</h2>
+<p>Pages hanya menyajikan frontend statis. Facade <code>api.js</code> memilih sumber data: FastAPI bila
+<code>VITE_API_URL</code> diset, mode demo lokal bila tidak. Auth mengikuti pola yang sama lewat
+<code>supabaseClient.js</code>.</p></figcaption>
+</figure>
+
+<figure>
+<svg viewBox="0 0 880 430" role="img" aria-label="Diagram model data SyncNol">
+  <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1c1917"/></marker></defs>
+  <text class="tag" x="20" y="24">MODEL DATA — POSTGRES / SQLITE (BACKEND) · SUPABASE · LOCALSTORAGE (DEMO)</text>
+  <rect class="box" x="20" y="44" width="260" height="150" rx="12"/>
+  <text class="lbl" x="150" y="74" text-anchor="middle">User</text>
+  <text class="sub" x="40" y="98">id · nama · email (unik)</text>
+  <text class="sub" x="40" y="118">pekerjaan · tujuan_keuangan</text>
+  <text class="sub" x="40" y="138">pendapatan_bulanan</text>
+  <text class="sub" x="40" y="168">summary: net worth = pemasukan −</text>
+  <text class="sub" x="40" y="184">pengeluaran − total utang</text>
+  <rect class="box" x="310" y="44" width="260" height="150" rx="12"/>
+  <text class="lbl" x="440" y="74" text-anchor="middle">Transaction</text>
+  <text class="sub" x="330" y="98">id · user_id → User</text>
+  <text class="sub" x="330" y="118">jenis (Pemasukan / Pengeluaran)</text>
+  <text class="sub" x="330" y="138">kategori · nominal · keterangan</text>
+  <text class="sub" x="330" y="158">tanggal</text>
+  <rect class="box" x="600" y="44" width="260" height="150" rx="12"/>
+  <text class="lbl" x="730" y="74" text-anchor="middle">Debt</text>
+  <text class="sub" x="620" y="98">id · user_id → User</text>
+  <text class="sub" x="620" y="118">nama_kreditur · jenis_utang</text>
+  <text class="sub" x="620" y="138">total_utang</text>
+  <rect class="box-soft" x="20" y="224" width="410" height="96" rx="12"/>
+  <text class="lbl" x="225" y="254" text-anchor="middle">Supabase — goals · academy_progress</text>
+  <text class="sub" x="40" y="278">goal: user_id · nama · target · terkumpul</text>
+  <text class="sub" x="40" y="298">academy_progress: user_id · modul · xp</text>
+  <rect class="box-accent" x="460" y="224" width="400" height="96" rx="12"/>
+  <text class="lbl-w" x="660" y="254" text-anchor="middle">Mode demo — localStorage</text>
+  <text class="sub-w" x="480" y="278">syncnol-demo-v1: 18 transaksi · 2 utang · 2 goals</text>
+  <text class="sub-w" x="480" y="298">syncnol-demo-auth-v1 · syncnol-vault-v1 · splits[]</text>
+  <path class="arr" d="M280,119 H310" marker-end="url(#ah2)"/>
+  <path class="arr" d="M280,159 H310" marker-end="url(#ah2)"/>
+  <text class="sub" x="20" y="360">Relasi: satu User punya banyak Transaction dan banyak Debt. Goals &amp; academy_progress</text>
+  <text class="sub" x="20" y="380">tinggal di Supabase (atau mock demo); Wingman splits hanya ada di mode demo.</text>
+</svg>
+<figcaption><h2><span class="num">2</span>Model data</h2>
+<p>Tiga sumber kebenaran yang tidak saling menimpa: tabel relasional backend untuk uang, Supabase untuk goals
+dan progres akademi, localStorage untuk mode demo. Bentuk kembalian demo meniru payload backend.</p></figcaption>
+</figure>
+
+<figure>
+<svg viewBox="0 0 880 400" role="img" aria-label="Diagram alur chat J.A.R.V.I.S SyncNol">
+  <defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1c1917"/></marker></defs>
+  <text class="tag" x="20" y="24">ALUR — "BELI KOPI 22 RIBU" DARI KETIK SAMPAI TERCATAT</text>
+  <rect class="box" x="20" y="44" width="160" height="64" rx="12"/>
+  <text class="lbl" x="100" y="70" text-anchor="middle">1 · Ketik</text>
+  <text class="sub" x="100" y="90" text-anchor="middle">chat dashboard</text>
+  <rect class="box" x="220" y="44" width="200" height="64" rx="12"/>
+  <text class="lbl" x="320" y="70" text-anchor="middle">2 · Parse nominal</text>
+  <text class="sub" x="320" y="90" text-anchor="middle">"22 ribu" → Rp 22.000</text>
+  <rect class="box" x="460" y="44" width="200" height="64" rx="12"/>
+  <text class="lbl" x="560" y="70" text-anchor="middle">3 · Klasifikasi</text>
+  <text class="sub" x="560" y="90" text-anchor="middle">Pengeluaran · Makan</text>
+  <rect class="box-accent" x="700" y="44" width="160" height="64" rx="12"/>
+  <text class="lbl-w" x="780" y="70" text-anchor="middle">4 · Catat</text>
+  <text class="sub-w" x="780" y="90" text-anchor="middle">transaksi baru</text>
+  <rect class="box-soft" x="220" y="150" width="200" height="64" rx="12"/>
+  <text class="lbl" x="320" y="176" text-anchor="middle">5 · Hitung ulang</text>
+  <text class="sub" x="320" y="196" text-anchor="middle">net worth · badge hari ini</text>
+  <rect class="box-soft" x="460" y="150" width="200" height="64" rx="12"/>
+  <text class="lbl" x="560" y="176" text-anchor="middle">6 · Balas</text>
+  <text class="sub" x="560" y="196" text-anchor="middle">"Tercatat: Pengeluaran …"</text>
+  <rect class="box" x="20" y="260" width="400" height="96" rx="12"/>
+  <text class="lbl" x="220" y="290" text-anchor="middle">Dengan backend + Gemini</text>
+  <text class="sub" x="40" y="314">POST /api/nudge — Gemini mendeteksi transaksi,</text>
+  <text class="sub" x="40" y="334">RAG POJK menambah pasal terdekat ke jawaban.</text>
+  <rect class="box" x="460" y="260" width="400" height="96" rx="12"/>
+  <text class="lbl" x="660" y="290" text-anchor="middle">Mode demo (tanpa backend)</text>
+  <text class="sub" x="480" y="314">Parser rule-based di demo.js — hasil sama untuk</text>
+  <text class="sub" x="480" y="334">kalimat umum; OCR struk dijawab jujur butuh key.</text>
+  <path class="arr" d="M180,76 H220" marker-end="url(#ah3)"/>
+  <path class="arr" d="M420,76 H460" marker-end="url(#ah3)"/>
+  <path class="arr" d="M660,76 H700" marker-end="url(#ah3)"/>
+  <path class="arr" d="M780,108 V150 H660" marker-end="url(#ah3)"/>
+  <path class="arr" d="M460,182 H420" marker-end="url(#ah3)"/>
+</svg>
+<figcaption><h2><span class="num">3</span>Alur J.A.R.V.I.S</h2>
+<p>Satu kalimat menjadi satu transaksi terkategori dalam hitungan detik. Jalur backend dan jalur demo
+menghasilkan balasan dan data yang sama bentuknya — halaman tidak tahu sumbernya.</p></figcaption>
+</figure>
+
+</main>
+<footer>SyncNol — diagram dibuat 19 Nov 2026 · HTML + SVG murni, tanpa Mermaid · Sumber: kode di
+<code>frontend/src/lib/api.js</code>, <code>demo.js</code>, <code>backend/main.py</code>.</footer>
+</body>
+</html>

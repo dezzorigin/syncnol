@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Lock,
   Unlock,
@@ -43,23 +43,48 @@ const INITIAL_NOTES = [
   { id: 1, title: "PIN & Password Darurat", content: "Di simpan di safety deposit BCA. Hubungi notaris jika darurat.", hidden: true },
 ];
 
+const VAULT_KEY = "syncnol-vault-v1";
+
+function loadVault() {
+  try {
+    const raw = localStorage.getItem(VAULT_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.assets)) return parsed;
+    }
+  } catch {
+    /* localStorage tidak tersedia — pakai nilai awal */
+  }
+  return { lockedAmount: 0, assets: INITIAL_ASSETS, notes: INITIAL_NOTES };
+}
+
 export default function VaultPage() {
   const { summary } = useAppStore();
 
   // --- Vault Lock State ---
-  const [lockedAmount, setLockedAmount] = useState(0);
+  const [lockedAmount, setLockedAmount] = useState(() => loadVault().lockedAmount);
   const [inputAmount, setInputAmount] = useState("");
   const [unlocking, setUnlocking] = useState(false);
   const [captchaAnswer, setCaptchaAnswer] = useState("");
 
   // --- Asset Tracker State ---
-  const [assets, setAssets] = useState(INITIAL_ASSETS);
+  const [assets, setAssets] = useState(() => loadVault().assets);
   const [showAddAsset, setShowAddAsset] = useState(false);
   const [newAsset, setNewAsset] = useState({ category: "cash", name: "", value: "" });
   const [expandedCat, setExpandedCat] = useState(null);
 
   // --- Secure Notes State ---
-  const [notes, setNotes] = useState(INITIAL_NOTES);
+  const [notes, setNotes] = useState(() => loadVault().notes);
+
+  // Simpan brankas (dana terkunci + aset + catatan) ke localStorage setiap
+  // kali berubah, supaya tidak hilang saat refresh.
+  useEffect(() => {
+    try {
+      localStorage.setItem(VAULT_KEY, JSON.stringify({ lockedAmount, assets, notes }));
+    } catch {
+      /* abaikan */
+    }
+  }, [lockedAmount, assets, notes]);
   const [showAddNote, setShowAddNote] = useState(false);
   const [newNote, setNewNote] = useState({ title: "", content: "" });
   const [revealedNotes, setRevealedNotes] = useState({});

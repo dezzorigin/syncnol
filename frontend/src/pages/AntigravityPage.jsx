@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import axios from "axios";
+import { fetchDebts as apiFetchDebts, createDebt, deleteDebt } from "../lib/api";
 import useAppStore from "../store/useAppStore";
 import {
   Rocket,
@@ -12,8 +12,7 @@ import {
 
 export default function AntigravityPage() {
   const { dbUserId, transactions } = useAppStore();
-  const [debts, setDebts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [debts, setDebts] = useState(null); // null = masih memuat
   const [showAddDebt, setShowAddDebt] = useState(false);
   const [newDebt, setNewDebt] = useState({
     nama_kreditur: "",
@@ -25,20 +24,20 @@ export default function AntigravityPage() {
   const fetchDebts = useCallback(async () => {
     if (!dbUserId) return;
     try {
-      const res = await axios.get(
-        `http://127.0.0.1:8000/api/users/${dbUserId}/debts`,
-      );
-      if (res.data.status === "success") {
-        setDebts(res.data.daftar_utang || []);
+      const res = await apiFetchDebts(dbUserId);
+      if (res.status === "success") {
+        setDebts(res.daftar_utang || []);
       }
     } catch (e) {
       console.error("Failed to fetch debts:", e);
-    } finally {
-      setLoading(false);
     }
   }, [dbUserId]);
 
+  // Muat utang saat mount. Pengecualian aturan set-state-in-effect:
+  // setter di sini berjalan SETELAH await (baca backend/demo), bukan
+  // sinkron di badan effect — pola fetch-on-mount standar halaman ini.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDebts();
   }, [fetchDebts]);
 
@@ -47,7 +46,7 @@ export default function AntigravityPage() {
     if (!newDebt.nama_kreditur || !newDebt.total_utang) return;
     setActionLoading("add");
     try {
-      await axios.post("http://127.0.0.1:8000/api/debts", {
+      await createDebt({
         ...newDebt,
         total_utang: parseFloat(newDebt.total_utang),
         user_id: dbUserId,
@@ -65,7 +64,7 @@ export default function AntigravityPage() {
   const handleDeleteDebt = async (id) => {
     setActionLoading(id);
     try {
-      await axios.delete(`http://127.0.0.1:8000/api/debts/${id}`);
+      await deleteDebt(id);
       fetchDebts();
     } catch (e) {
       console.error(e);
@@ -106,7 +105,7 @@ export default function AntigravityPage() {
     return found.sort((a, b) => b.total - a.total);
   }, [transactions]);
 
-  const totalDebt = debts.reduce((sum, d) => sum + d.total_utang, 0);
+  const totalDebt = (debts || []).reduce((sum, d) => sum + d.total_utang, 0);
 
   const cardClass =
     "bg-white dark:bg-gray-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm relative overflow-hidden";
@@ -155,11 +154,11 @@ export default function AntigravityPage() {
           </div>
 
           <div className="flex-1 space-y-4 relative z-10">
-            {loading ? (
+            {debts === null ? (
               <div className="py-10 text-center text-slate-400 animate-pulse">
                 Scanning liabilities...
               </div>
-            ) : debts.length === 0 ? (
+            ) : (debts || []).length === 0 ? (
               <div className="py-10 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
                 <CheckCircle2
                   size={32}
@@ -173,7 +172,7 @@ export default function AntigravityPage() {
                 </p>
               </div>
             ) : (
-              debts.map((d) => (
+              (debts || []).map((d) => (
                 <div
                   key={d.id}
                   className="group bg-white dark:bg-slate-800 border border-red-100 dark:border-red-900/30 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-red-300 dark:hover:border-red-700/50 hover:shadow-md"
